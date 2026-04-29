@@ -11,6 +11,9 @@ type StudentRow = {
   nationalId: string;
   grade: string;
   section: string;
+  dateOfBirth?: string | null;
+  nationality?: string | null;
+  gender?: "بنات" | "بنين" | string | null;
   seq?: number;
 };
 
@@ -28,33 +31,51 @@ async function run() {
   // render properly. We treat (grade, section, academicYear) as the
   // logical key — see classes.gradeSectionYearUnique.
   const academicYear = "1447هـ";
-  const sectionsNeeded = Array.from(new Set(rows.map((r) => r.section))).sort();
-  const grade = rows[0]?.grade ?? "الأول متوسط";
 
-  const existingClasses = await db
-    .select()
-    .from(schema.classes)
-    .where(eq(schema.classes.grade, grade));
-  const existingSections = new Set(existingClasses.map((c) => c.section));
+  // A single JSON file can carry rows from several grades (e.g. boys vs
+  // girls of the same level both stored under the same grade label) and
+  // multiple sections per grade. Collect all (grade, section) pairs so
+  // the matching class rows are guaranteed to exist.
+  const pairsKey = (g: string, s: string) => `${g}::${s}`;
+  const allPairs = new Map<string, { grade: string; section: string }>();
+  for (const r of rows) {
+    allPairs.set(pairsKey(r.grade, r.section), {
+      grade: r.grade,
+      section: r.section,
+    });
+  }
 
-  const missing = sectionsNeeded.filter((s) => !existingSections.has(s));
-  if (missing.length > 0) {
+  const distinctGrades = Array.from(new Set(rows.map((r) => r.grade)));
+  const existingClasses = await db.select().from(schema.classes);
+  const existingPairs = new Set(
+    existingClasses.map((c) => pairsKey(c.grade, c.section)),
+  );
+
+  const missingPairs = Array.from(allPairs.values()).filter(
+    (p) => !existingPairs.has(pairsKey(p.grade, p.section)),
+  );
+
+  if (missingPairs.length > 0) {
     const wing = (s: string) => {
       const n = Number(s.split("/")[0]);
-      return ["A", "B", "C", "D"][n - 1] ?? "A";
+      return ["A", "B", "C", "D", "E", "F"][n - 1] ?? "A";
     };
     await db.insert(schema.classes).values(
-      missing.map((section) => ({
+      missingPairs.map(({ grade, section }) => ({
         grade,
         section,
         academicYear,
         capacity: 35,
-        room: `${wing(section)}-${section.replace("/", "0")}`,
+        room: `${wing(section)}-${section.replace("/", "0").replace("-ب", "B")}`,
       })),
     );
-    console.log(`🏫 Created ${missing.length} new class section(s): ${missing.join(", ")}`);
+    console.log(
+      `🏫 Created ${missingPairs.length} new class section(s): ${missingPairs
+        .map((p) => `${p.grade} ${p.section}`)
+        .join(", ")}`,
+    );
   } else {
-    console.log(`🏫 All ${sectionsNeeded.length} sections already exist`);
+    console.log(`🏫 All ${allPairs.size} sections across ${distinctGrades.length} grade(s) already exist`);
   }
 
   // Insert students, skipping any whose national_id is already in DB.
@@ -70,8 +91,13 @@ async function run() {
       nationalId: r.nationalId,
       grade: r.grade,
       section: r.section,
-      nationality: "سعودية",
-      enrollmentDate: "2026-09-01",
+      nationality: r.nationality ?? "سعودية",
+      dateOfBirth: r.dateOfBirth ?? null,
+      enrollmentDate: "2025-09-01",
+      // Gender isn't a column in the schema — store it in `notes` so that
+      // pages and exports can still distinguish بنين / بنات without a
+      // schema migration.
+      notes: r.gender ? `الجنس: ${r.gender}` : null,
     }));
 
   if (toInsert.length === 0) {

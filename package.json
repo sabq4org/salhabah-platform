@@ -15,6 +15,8 @@
     "db:export": "tsx scripts/export-db.ts",
     "db:import-students": "tsx scripts/import-students.ts",
     "db:import-teachers": "tsx scripts/import-teachers.ts",
+    "db:replace-students": "tsx scripts/replace-all-students.ts",
+    "db:verify-students": "tsx scripts/final-verify.ts",
     "db:purge-fake": "tsx scripts/purge-fake-data.ts"
   },
   "keywords": [],

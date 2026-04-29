@@ -4,103 +4,29 @@ import { eq } from "drizzle-orm";
 loadEnv({ path: ".env.local" });
 loadEnv({ path: ".env", override: false });
 
-const sample = [
-  {
-    fullName: "نوف عبدالله العتيبي",
-    nationalId: "1100000001",
-    grade: "الأول ابتدائي",
-    section: "1/1",
-    guardianName: "عبدالله العتيبي",
-    guardianPhone: "0500000001",
-    dateOfBirth: "2019-03-14",
-    nationality: "سعودية",
-    bloodType: "O+",
-    email: "nouf@salhabah.edu.sa",
-    address: "حي النرجس، شارع الأمير سلطان، صبيا",
-    chronicDiseases: null,
-    allergies: "حساسية فول سوداني",
-    emergencyContactName: "خالة الطالبة - منى العتيبي",
-    emergencyContactPhone: "0530000001",
-    enrollmentDate: "2025-09-01",
-    previousSchool: "روضة صبيا الثالثة",
-  },
-  {
-    fullName: "ريم سعد الدوسري",
-    nationalId: "1100000002",
-    grade: "الثالث ابتدائي",
-    section: "3/1",
-    guardianName: "سعد الدوسري",
-    guardianPhone: "0500000002",
-    dateOfBirth: "2017-07-22",
-    nationality: "سعودية",
-    bloodType: "A+",
-    email: "reem@salhabah.edu.sa",
-    address: "حي الياسمين، صبيا",
-    chronicDiseases: "ربو خفيف",
-    allergies: null,
-    emergencyContactName: "العم - فهد الدوسري",
-    emergencyContactPhone: "0530000002",
-    enrollmentDate: "2023-09-01",
-    previousSchool: "ابتدائية صلهبه الأولى",
-  },
-  {
-    fullName: "ليان محمد الشمري",
-    nationalId: "1100000003",
-    grade: "السادس ابتدائي",
-    section: "6/1",
-    guardianName: "محمد الشمري",
-    guardianPhone: "0500000003",
-    dateOfBirth: "2014-11-08",
-    nationality: "سعودية",
-    bloodType: "B+",
-    email: "layan@salhabah.edu.sa",
-    address: "حي المروج، شارع التحلية، صبيا",
-    chronicDiseases: null,
-    allergies: null,
-    emergencyContactName: "الأم - فاطمة الشمري",
-    emergencyContactPhone: "0530000003",
-    enrollmentDate: "2020-09-01",
-    previousSchool: "ابتدائية صلهبه الأولى",
-  },
-  {
-    fullName: "سارة فهد القحطاني",
-    nationalId: "1100000004",
-    grade: "روضة - تمهيدي",
-    section: "KG3/1",
-    guardianName: "فهد القحطاني",
-    guardianPhone: "0500000004",
-    dateOfBirth: "2020-05-30",
-    nationality: "سعودية",
-    bloodType: "AB+",
-    email: "sara@salhabah.edu.sa",
-    address: "حي الورود، صبيا",
-    chronicDiseases: null,
-    allergies: "حساسية لاكتوز",
-    emergencyContactName: "الجد - عبدالله القحطاني",
-    emergencyContactPhone: "0530000004",
-    enrollmentDate: "2025-09-01",
-    previousSchool: "روضة الزهراء",
-  },
-  {
-    fullName: "غلا ناصر الزهراني",
-    nationalId: "1100000005",
-    grade: "الرابع ابتدائي",
-    section: "4/1",
-    guardianName: "ناصر الزهراني",
-    guardianPhone: "0500000005",
-    dateOfBirth: "2016-01-19",
-    nationality: "سعودية",
-    bloodType: "O-",
-    email: "ghala@salhabah.edu.sa",
-    address: "حي العليا، صبيا",
-    chronicDiseases: "سكري نوع 1",
-    allergies: null,
-    emergencyContactName: "الخالة - نورة الزهراني",
-    emergencyContactPhone: "0530000005",
-    enrollmentDate: "2022-09-01",
-    previousSchool: "روضة صبيا الثالثة",
-  },
-];
+// لا يوجد بيانات طالبات تجريبية بعد إدراج البيانات الحقيقية من PDF.
+// إذا احتجتِ لإعادة إنشاء بيانات تجريبية للاختبار، أعيدي عيّنات
+// مماثلة هنا — لكن الهدف الحالي أن يبقى seed خفيفاً ولا يتعارض مع
+// السجلات الفعلية للطالبات (521 طالبة في grade1..6-students.json).
+const sample: Array<{
+  fullName: string;
+  nationalId: string;
+  grade: string;
+  section: string;
+  guardianName: string;
+  guardianPhone: string;
+  dateOfBirth: string;
+  nationality: string;
+  bloodType: string;
+  email: string;
+  address: string;
+  chronicDiseases: string | null;
+  allergies: string | null;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  enrollmentDate: string;
+  previousSchool: string;
+}> = [];
 
 const teacherSample = [
   {
@@ -261,9 +187,13 @@ async function run() {
   const { db, schema } = await import("./index");
 
   const existingStudents = await db.select().from(schema.students);
-  if (existingStudents.length === 0) {
+  if (existingStudents.length === 0 && sample.length > 0) {
     await db.insert(schema.students).values(sample);
     console.log(`تمت إضافة ${sample.length} طالبة`);
+  } else if (existingStudents.length === 0) {
+    console.log(
+      `تخطي الطالبات: لا توجد بيانات تجريبية في seed (استخدمي npm run db:import-students لإدخال بيانات حقيقية)`,
+    );
   } else {
     let backfilled = 0;
     for (const seedRow of sample) {
