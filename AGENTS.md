@@ -142,12 +142,49 @@ npm run db:import-students -- scripts/import-data/clean-students.json
 
 السكربت idempotent — يتخطّى أي رقم هوية موجود مسبقاً.
 
-### استيراد المعلمات
+### استيراد المعلمات (من docx الأصلي للوزارة)
 
 ```bash
 python3 scripts/extract-teachers.py # يولّد scripts/import-data/teachers.json
 npm run db:import-teachers
 ```
+
+### استيراد المعلمات والإداريات (من Excel جانبي للمدرسة)
+
+عند ورود ملف Excel من المدرسة بقسمين منفصلين (مثل
+`بيانات المعلمات والاداريات.xlsx`):
+
+```bash
+# 1. ولّدي scripts/import-data/teachers-extra.json + admins.json
+python3 scripts/extract-staff-xlsx.py "/path/to/file.xlsx"
+
+# 2. أضيفي المعلمات الجديدات (idempotent — يتخطى الموجودات)
+npm run db:import-teachers -- scripts/import-data/teachers-extra.json
+
+# 3. أضيفي الإداريات
+npm run db:import-admins
+```
+
+### إنشاء حسابات تسجيل الدخول لكل المعلمات والإداريات
+
+```bash
+npm run db:create-staff-users
+```
+
+هذا السكربت idempotent ويُنشئ user لكل معلمة/إدارية ليس لها حساب، بصيغة:
+
+| الحقل | القيمة |
+|---|---|
+| `username` | رقم الهوية الوطنية |
+| `password` | آخر ٤ أرقام من الهوية + `salhabah` |
+| `mustChangePassword` | `true` (يُجبر على تغييرها أول دخول) |
+| `role` | `teacher` للمعلمات / `staff` للإداريات |
+
+السكربت يتخطى أي موظفة لها حساب مرتبط مسبقاً، **أو** اسمها الكامل
+يطابق user موجود (هذا يحمي حساب المديرة `admin` الافتراضي من التكرار).
+
+كلمات المرور الأولية تُطبع في الطرفية فقط — يجب نسخها وتسليمها يدوياً
+ولا تُحفظ في أي ملف.
 
 ## بعد إدخال بيانات حقيقية → تنظيف الـ seed
 
